@@ -1,3 +1,5 @@
 python-dotenv
 semantic-kernel
 azure-ai-inference
+azure-ai-documentintelligence
+azure-core

@@ -2,6 +2,10 @@ import os
 import asyncio
 from dotenv import load_dotenv
 from document_analyzer import DocumentAnalyzer
+import unittest
+from unittest.mock import Mock, patch
+import json
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -40,3 +44,78 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+class TestDocumentAnalyzer(unittest.TestCase):
+    @patch('document_analyzer.DocumentIntelligenceClient')
+    def setUp(self, mock_client):
+        """Set up test cases."""
+        self.endpoint = "mock_endpoint"
+        self.key = "mock_key"
+        self.analyzer = DocumentAnalyzer(self.endpoint, self.key)
+        
+        # Mock the Azure client
+        mock_client.return_value.begin_analyze_document.return_value = Mock()
+        
+        self.test_document = {
+            "url": "test_url",
+            "timestamp": "2025-05-06T14:25:24.390855",
+            "analysis_result": {
+                "content": """
+                Regarding Privacy Protection
+                Organizations must protect personal information
+                Data breaches must be reported
+                
+                Concerning AI Systems
+                High-impact systems require risk mitigation
+                Bias must be monitored and addressed
+                """,
+                "sections": [
+                    {
+                        "heading": "Privacy Section",
+                        "content": "This section refers to AI Systems section below."
+                    },
+                    {
+                        "heading": "AI Systems",
+                        "content": "AI systems must comply with privacy requirements."
+                    }
+                ]
+            }
+        }
+        self.analyzer.current_document = self.test_document
+        
+    def test_theme_extraction(self):
+        """Test that themes are correctly extracted from document content"""
+        result = self.analyzer.analyze_document_content()
+        themes = result["key_themes"]
+        
+        self.assertTrue(any(t["theme"].strip() == "Privacy Protection" for t in themes))
+        self.assertTrue(any(t["theme"].strip() == "AI Systems" for t in themes))
+        
+    def test_cross_references(self):
+        """Test that cross-references between sections are identified"""
+        result = self.analyzer.analyze_document_content()
+        refs = result["cross_references"]
+        
+        self.assertTrue(any(
+            ref["from_section"] == "Privacy Section" and 
+            ref["to_section"] == "AI Systems" 
+            for ref in refs
+        ))
+        
+    def test_semantic_analysis(self):
+        """Test complete semantic analysis functionality"""
+        result = self.analyzer.analyze_document_content()
+        
+        self.assertIn("key_themes", result)
+        self.assertIn("semantic_structure", result)
+        self.assertIn("cross_references", result)
+        self.assertIn("definitions", result)
+        
+        # Verify semantic structure analysis
+        structure = result["semantic_structure"]
+        self.assertIn("hierarchical_sections", structure)
+        self.assertIn("section_relationships", structure)
+        self.assertIn("section_types", structure)
+
+if __name__ == '__main__':
+    unittest.main()
